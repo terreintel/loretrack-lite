@@ -157,6 +157,15 @@ body {
 .worker-greeting strong { color: var(--text); }
 .hint-warn { color: var(--warn); font-weight: 500; }
 
+/* ── Day prompt ──────────────────────────────────────────────── */
+.day-prompt {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+  text-align: center;
+  margin: 0;
+}
+
 /* ── Record button ───────────────────────────────────────────── */
 .record-wrapper {
   display: flex;
@@ -540,35 +549,3 @@ body {
   }
 }
 
-/* ── Dashboard ───────────────────────────────────────────────── */
-.dashboard-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg);
-  z-index: 300;
-  display: flex;
-  flex-direction: column;
-  animation: fade-in 0.15s ease;
-}
-
-.dashboard-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.dashboard-btn {
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 8px;
-  transition: background 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.dashboard-btn:hover { background: rgba(255,255,255,0.25); }

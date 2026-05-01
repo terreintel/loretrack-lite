@@ -4,7 +4,6 @@ import StatusBanner from './components/StatusBanner.jsx';
 import RecordingList from './components/RecordingList.jsx';
 import ReportModal from './components/ReportModal.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
-import Dashboard from './components/Dashboard.jsx';
 import { startRecording, stopRecording } from './services/recorder.js';
 import { saveRecording, getAllRecordings } from './services/db.js';
 import { syncQueue } from './services/sync.js';
@@ -23,7 +22,6 @@ export default function App() {
   const [statusMsg, setStatusMsg]           = useState('');
   const [currentReport, setCurrentReport]   = useState(null);
   const [showSettings, setShowSettings]     = useState(false);
-  const [showDashboard, setShowDashboard]   = useState(false);
   const [workerName, setWorkerName]         = useState(() => loadSetting('workerName'));
   const [supervisorEmail, setSupervisorEmail] = useState(() => loadSetting('supervisorEmail'));
 
@@ -95,34 +93,20 @@ export default function App() {
   const pendingCount = recordings.filter((r) => r.status === 'pending').length;
   const isFirstRun   = !supervisorEmail;
 
-  if (showDashboard) {
-    return <Dashboard onClose={() => setShowDashboard(false)} />;
-  }
-
   return (
     <div className="app">
       <header className="app-header">
         <div className="header-brand">
           <span className="header-logo" aria-hidden="true">🌿</span>
-          <h1>LoreTrack Wulgu</h1>
+          <h1>LoreTrack Lite</h1>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            className="dashboard-btn"
-            onClick={() => setShowDashboard(true)}
-            aria-label="Open supervisor dashboard"
-            title="Supervisor Dashboard"
-          >
-            📊
-          </button>
-          <button
-            className="settings-btn"
-            onClick={() => setShowSettings(true)}
-            aria-label="Open settings"
-          >
-            ⚙
-          </button>
-        </div>
+        <button
+          className="settings-btn"
+          onClick={() => setShowSettings(true)}
+          aria-label="Open settings"
+        >
+          ⚙
+        </button>
       </header>
 
       <StatusBanner isOnline={isOnline} pendingCount={pendingCount} />
@@ -140,6 +124,8 @@ export default function App() {
           )}
         </div>
 
+        <h2 className="day-prompt">What did you do today?</h2>
+
         <RecordButton
           isRecording={isRecording}
           onStart={handleStartRecording}
@@ -149,7 +135,7 @@ export default function App() {
 
         {isFirstRun && (
           <button className="setup-cta" onClick={() => setShowSettings(true)}>
-            Set up LoreTrack Wulgu →
+            Set up LoreTrack Lite →
           </button>
         )}
 

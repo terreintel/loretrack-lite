@@ -11,8 +11,8 @@ export default defineConfig({
         enabled: true,
       },
       manifest: {
-        name: 'LoreTrack',
-        short_name: 'LoreTrack',
+        name: 'LoreTrack Lite',
+        short_name: 'LoreTrack Lite',
         description: 'Voice field reporting for community workers',
         theme_color: '#1B3A4B',
         background_color: '#F5F0E8',
