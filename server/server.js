@@ -2,36 +2,24 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const nodemailer = require('nodemailer');
-const FormData = require('form-data');
+const Groq = require('groq-sdk');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const upload = multer({ storage: multer.memoryStorage() });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.use(cors());
 app.use(express.json());
 
-async function transcribeAudio(buffer, originalName, mimeType) {
-  const form = new FormData();
-  form.append('file', buffer, { filename: originalName, contentType: mimeType });
-  form.append('model', 'whisper-large-v3');
-  form.append('response_format', 'text');
-
-  const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-      ...form.getHeaders()
-    },
-    body: form
+async function transcribeAudio(buffer, filename, mimeType) {
+  const file = new File([buffer], filename, { type: mimeType });
+  const transcription = await groq.audio.transcriptions.create({
+    file,
+    model: 'whisper-large-v3',
+    response_format: 'text'
   });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Groq error: ${err}`);
-  }
-
-  return response.text();
+  return transcription;
 }
 
 async function sendReport(report, supervisorEmail) {
