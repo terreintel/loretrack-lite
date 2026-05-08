@@ -1,75 +1,64 @@
-'use strict';
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const nodemailer = require('nodemailer');
+const FormData = require('form-data');
 
-require('dotenv').config();
-
-const express  = require('express');
-const cors     = require('cors');
-const multer   = require('multer');
-const path     = require('path');
-
-const { transcribeAudio } = require('./services/transcription');
-const { sendReport }      = require('./services/email');
-
-const REQUIRED_VARS = [
-  'GROQ_API_KEY',
-  'SMTP_HOST',
-  'SMTP_USER',
-  'SMTP_PASS',
-];
-const missing = REQUIRED_VARS.filter((v) => !process.env[v]);
-if (missing.length) {
-  console.error(`\n[LoreTrack Lite] Missing required environment variables:\n  ${missing.join(', ')}\n`);
-  process.exit(1);
-}
-
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3001;
+const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  methods: ['GET', 'POST'],
-}));
-
+app.use(cors());
 app.use(express.json());
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/^audio\//.test(file.mimetype)) cb(null, true);
-    else cb(new Error(`Unsupported file type: ${file.mimetype}`));
-  },
-});
+async function transcribeAudio(buffer, originalName, mimeType) {
+  const form = new FormData();
+  form.append('file', buffer, { filename: originalName, contentType: mimeType });
+  form.append('model', 'whisper-large-v3');
+  form.append('response_format', 'text');
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: 'lite-1.0.0' });
-});
+  const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      ...form.getHeaders()
+    },
+    body: form
+  });
 
-/**
- * POST /api/upload
- * Pipeline: Groq Whisper → Nodemailer
- */
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Groq error: ${err}`);
+  }
+
+  return response.text();
+}
+
+async function sendReport(report, supervisorEmail) {
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: supervisorEmail,
+    subject: `LoreTrack Report — ${report.workerName} — ${report.date}`,
+    text: `Worker: ${report.workerName}\nDate: ${report.date}\nTime: ${report.time}\n\n${report.transcript}`
+  });
+}
+
 app.post('/api/upload', upload.single('audio'), async (req, res) => {
   try {
-    const {
-      workerName      = '',
-      supervisorEmail = '',
-      timestamp       = '',
-    } = req.body;
+    const { workerName, supervisorEmail, timestamp } = req.body;
+    const { buffer, originalname, mimetype } = req.file;
 
-    if (!supervisorEmail) {
-      return res.status(400).json({ error: 'supervisorEmail is required' });
-    }
-    if (!req.file) {
-      return res.status(400).json({ error: 'No audio file received' });
-    }
-
-    const { buffer, mimetype, originalname } = req.file;
-    console.log(`[upload] Worker: "${workerName}" | File: ${originalname} (${buffer.length} bytes)`);
-
-    console.log('[upload] Transcribing…');
     const transcript = await transcribeAudio(buffer, originalname, mimetype);
-    console.log(`[upload] Transcript: "${transcript.slice(0, 80)}…"`);
 
     const ts = timestamp ? new Date(Number(timestamp)) : new Date();
     const date = ts.toLocaleDateString('en-AU');
@@ -77,30 +66,15 @@ app.post('/api/upload', upload.single('audio'), async (req, res) => {
 
     const report = { workerName, date, time, transcript };
 
-    console.log(`[upload] Emailing report to ${supervisorEmail}…`);
     await sendReport(report, supervisorEmail);
 
-    console.log('[upload] Done.');
     res.json({ transcript, report });
-
   } catch (err) {
     console.error('[upload] Error:', err.message);
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
 });
 
-if (process.env.NODE_ENV === 'production') {
-  const clientDist = path.join(__dirname, '..', 'client', 'dist');
-  app.use(express.static(clientDist));
-  app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
-}
-
-app.use((err, _req, res, _next) => {
-  console.error('[error]', err.message);
-  res.status(err.status || 500).json({ error: err.message });
-});
-
 app.listen(PORT, () => {
-  console.log(`\n🌿 LoreTrack Lite server running on http://localhost:${PORT}`);
-  console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`);
+  console.log(`LoreTrack Lite server running on port ${PORT}`);
 });
