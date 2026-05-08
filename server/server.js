@@ -28,4 +28,32 @@ async function sendReport(report, supervisorEmail) {
     from: 'LoreTrack Reports <onboarding@resend.dev>',
     to: supervisorEmail,
     subject: `LoreTrack Report — ${report.workerName} — ${report.date}`,
-    text: `Worker: ${report.workerName}\nDate: ${report.date}\nTime: ${report.
+    text: `Worker: ${report.workerName}\nDate: ${report.date}\nTime: ${report.time}\n\n${report.transcript}`
+  });
+}
+
+app.post('/api/upload', upload.single('audio'), async (req, res) => {
+  try {
+    const { workerName, supervisorEmail, timestamp } = req.body;
+    const { buffer, originalname, mimetype } = req.file;
+
+    const transcript = await transcribeAudio(buffer, originalname, mimetype);
+
+    const ts = timestamp ? new Date(Number(timestamp)) : new Date();
+    const date = ts.toLocaleDateString('en-AU');
+    const time = ts.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+
+    const report = { workerName, date, time, transcript };
+
+    await sendReport(report, supervisorEmail);
+
+    res.json({ transcript, report });
+  } catch (err) {
+    console.error('[upload] Error:', err.message);
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`LoreTrack Lite server running on port ${PORT}`);
+});
