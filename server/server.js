@@ -40,8 +40,8 @@ app.post('/api/upload', upload.single('audio'), async (req, res) => {
     const transcript = await transcribeAudio(buffer, originalname, mimetype);
 
     const ts = timestamp ? new Date(Number(timestamp)) : new Date();
-    const date = ts.toLocaleDateString('en-AU');
-    const time = ts.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+    const date = ts.toLocaleDateString('en-AU', { timeZone: 'Australia/Brisbane' });
+    const time = ts.toLocaleTimeString('en-AU', { timeZone: 'Australia/Brisbane', hour: '2-digit', minute: '2-digit' });
 
     const report = { workerName, date, time, transcript };
 
